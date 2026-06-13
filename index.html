@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FIFA World Cup 2026 · Match Tracker</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08111E; font-family: 'Segoe UI', system-ui, sans-serif; }
+    button { font-family: inherit; }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState } = React;
+
+// ═══════════════════════════════════════════════════════════════
+// MATCH DATA — Verified from FIFA.com, ESPN, Al Jazeera (June 12 2026)
+// ═══════════════════════════════════════════════════════════════
+const MATCHES = [
+  // ── GROUP A · June 11 · COMPLETED ────────────────────────────
+  { date:"2026-06-11", time:"2:00 PM CDT", team1:"Mexico", team2:"South Africa", score1:2, score2:0, group:"A", venue:"Mexico City Stadium", city:"Mexico City",
+    goals1:[{name:"Julián Quiñones",minute:"8"},{name:"Raúl Jiménez",minute:"67"}], goals2:[],
+    redCards:[{team:"South Africa",player:"Sphephelo Sithole",minute:"49"},{team:"South Africa",player:"Themba Zwane",minute:"84"},{team:"Mexico",player:"César Montes",minute:"90+"}] },
+  { date:"2026-06-11", time:"9:00 PM CDT", team1:"South Korea", team2:"Czech Republic", score1:2, score2:1, group:"A", venue:"Guadalajara Stadium", city:"Guadalajara",
+    goals1:[{name:"Hwang In-beom",minute:"67"},{name:"Oh Hyeon-gyu",minute:"80"}], goals2:[{name:"Ladislav Krejčí",minute:"59"}], redCards:[] },
+
+  // ── GROUP B · June 12 · 2:00 PM CDT ─────────────────────────
+  { date:"2026-06-12", time:"2:00 PM CDT", team1:"Canada", team2:"Bosnia-Herzegovina", score1:null, score2:null, group:"B", venue:"Toronto Stadium", city:"Toronto", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP D · June 12 · 8:00 PM CDT ─────────────────────────
+  { date:"2026-06-12", time:"8:00 PM CDT", team1:"USA", team2:"Paraguay", score1:null, score2:null, group:"D", venue:"Los Angeles Stadium", city:"Los Angeles", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP B · June 13 ────────────────────────────────────────
+  { date:"2026-06-13", time:"2:00 PM CDT", team1:"Qatar", team2:"Switzerland", score1:null, score2:null, group:"B", venue:"San Francisco Bay Area Stadium", city:"San Francisco Bay Area", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP C · June 13 ────────────────────────────────────────
+  { date:"2026-06-13", time:"5:00 PM CDT", team1:"Brazil", team2:"Morocco", score1:null, score2:null, group:"C", venue:"New York/New Jersey Stadium", city:"East Rutherford, NJ", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-13", time:"8:00 PM CDT", team1:"Haiti", team2:"Scotland", score1:null, score2:null, group:"C", venue:"Boston Stadium", city:"Boston", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP D · June 13 · 8:00 PM CDT (simultaneous) ──────────
+  { date:"2026-06-13", time:"8:00 PM CDT", team1:"Australia", team2:"Turkey", score1:null, score2:null, group:"D", venue:"Kansas City Stadium", city:"Kansas City", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP E · June 14 ────────────────────────────────────────
+  { date:"2026-06-14", time:"12:00 PM CDT", team1:"Germany", team2:"Curaçao", score1:null, score2:null, group:"E", venue:"Houston Stadium", city:"Houston", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-14", time:"6:00 PM CDT", team1:"Ivory Coast", team2:"Ecuador", score1:null, score2:null, group:"E", venue:"Philadelphia Stadium", city:"Philadelphia", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP F · June 14 ────────────────────────────────────────
+  { date:"2026-06-14", time:"3:00 PM CDT", team1:"Netherlands", team2:"Japan", score1:null, score2:null, group:"F", venue:"Dallas Stadium", city:"Dallas", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-14", time:"9:00 PM CDT", team1:"Sweden", team2:"Tunisia", score1:null, score2:null, group:"F", venue:"Miami Stadium", city:"Miami", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP G · June 15 ────────────────────────────────────────
+  { date:"2026-06-15", time:"5:00 PM CDT", team1:"Belgium", team2:"Egypt", score1:null, score2:null, group:"G", venue:"Seattle Stadium", city:"Seattle", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-15", time:"11:00 PM CDT", team1:"Iran", team2:"New Zealand", score1:null, score2:null, group:"G", venue:"Los Angeles Stadium", city:"Los Angeles", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP H · June 15 ────────────────────────────────────────
+  { date:"2026-06-15", time:"12:00 PM CDT", team1:"Spain", team2:"Cape Verde", score1:null, score2:null, group:"H", venue:"Atlanta Stadium", city:"Atlanta", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-15", time:"5:00 PM CDT", team1:"Saudi Arabia", team2:"Uruguay", score1:null, score2:null, group:"H", venue:"Miami Stadium", city:"Miami", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP I · June 16 ────────────────────────────────────────
+  { date:"2026-06-16", time:"2:00 PM CDT", team1:"France", team2:"Senegal", score1:null, score2:null, group:"I", venue:"New York/New Jersey Stadium", city:"East Rutherford, NJ", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-16", time:"5:00 PM CDT", team1:"Iraq", team2:"Norway", score1:null, score2:null, group:"I", venue:"Boston Stadium", city:"Boston", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP J · June 16 ────────────────────────────────────────
+  { date:"2026-06-16", time:"8:00 PM CDT", team1:"Argentina", team2:"Algeria", score1:null, score2:null, group:"J", venue:"Kansas City Stadium", city:"Kansas City", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-16", time:"11:00 PM CDT", team1:"Austria", team2:"Jordan", score1:null, score2:null, group:"J", venue:"San Francisco Bay Area Stadium", city:"San Francisco Bay Area", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP K · June 17 ────────────────────────────────────────
+  { date:"2026-06-17", time:"12:00 PM CDT", team1:"Portugal", team2:"DR Congo", score1:null, score2:null, group:"K", venue:"Houston Stadium", city:"Houston", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-17", time:"9:00 PM CDT", team1:"Uzbekistan", team2:"Colombia", score1:null, score2:null, group:"K", venue:"Mexico City Stadium", city:"Mexico City", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP L · June 17 ────────────────────────────────────────
+  { date:"2026-06-17", time:"3:00 PM CDT", team1:"England", team2:"Croatia", score1:null, score2:null, group:"L", venue:"Dallas Stadium", city:"Dallas", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-17", time:"6:00 PM CDT", team1:"Ghana", team2:"Panama", score1:null, score2:null, group:"L", venue:"Toronto Stadium", city:"Toronto", goals1:[], goals2:[], redCards:[] },
+
+  // ── GROUP A Matchday 2 · June 18 ─────────────────────────────
+  { date:"2026-06-18", time:"TBD", team1:"Mexico", team2:"South Korea", score1:null, score2:null, group:"A", venue:"TBD", city:"TBD", goals1:[], goals2:[], redCards:[] },
+  { date:"2026-06-18", time:"TBD", team1:"Czech Republic", team2:"South Africa", score1:null, score2:null, group:"A", venue:"TBD", city:"TBD", goals1:[], goals2:[], redCards:[] },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// GROUPS
+// ═══════════════════════════════════════════════════════════════
+const GROUP_MAP = {
+  A:["Mexico","South Africa","South Korea","Czech Republic"],
+  B:["Canada","Bosnia-Herzegovina","Qatar","Switzerland"],
+  C:["Brazil","Morocco","Haiti","Scotland"],
+  D:["USA","Paraguay","Australia","Turkey"],
+  E:["Germany","Curaçao","Ivory Coast","Ecuador"],
+  F:["Netherlands","Japan","Sweden","Tunisia"],
+  G:["Belgium","Egypt","Iran","New Zealand"],
+  H:["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+  I:["France","Senegal","Iraq","Norway"],
+  J:["Argentina","Algeria","Austria","Jordan"],
+  K:["Portugal","DR Congo","Uzbekistan","Colombia"],
+  L:["England","Croatia","Ghana","Panama"],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// FLAGS
+// ═══════════════════════════════════════════════════════════════
+const FLAG = {
+  "Mexico":"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷","Czech Republic":"🇨🇿",
+  "Canada":"🇨🇦","Bosnia-Herzegovina":"🇧🇦","Qatar":"🇶🇦","Switzerland":"🇨🇭",
+  "Brazil":"🇧🇷","Morocco":"🇲🇦","Haiti":"🇭🇹","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "USA":"🇺🇸","Paraguay":"🇵🇾","Australia":"🇦🇺","Turkey":"🇹🇷",
+  "Germany":"🇩🇪","Curaçao":"🇨🇼","Ivory Coast":"🇨🇮","Ecuador":"🇪🇨",
+  "Netherlands":"🇳🇱","Japan":"🇯🇵","Sweden":"🇸🇪","Tunisia":"🇹🇳",
+  "Belgium":"🇧🇪","Egypt":"🇪🇬","Iran":"🇮🇷","New Zealand":"🇳🇿",
+  "Spain":"🇪🇸","Cape Verde":"🇨🇻","Saudi Arabia":"🇸🇦","Uruguay":"🇺🇾",
+  "France":"🇫🇷","Senegal":"🇸🇳","Iraq":"🇮🇶","Norway":"🇳🇴",
+  "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
+  "Portugal":"🇵🇹","DR Congo":"🇨🇩","Uzbekistan":"🇺🇿","Colombia":"🇨🇴",
+  "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦",
+};
+const fl = n => FLAG[n] || "🏳️";
+
+// ═══════════════════════════════════════════════════════════════
+// FUN FACTS
+// ═══════════════════════════════════════════════════════════════
+const FACTS = {
+  "Mexico":       {e:"🌮",f:"Mexico has over 35 UNESCO World Heritage sites, including ancient Mayan pyramids. Mexico City was built on top of the Aztec capital Tenochtitlan — over 700 years ago!"},
+  "South Africa": {e:"🦁",f:"South Africa is the only country with THREE capital cities! It's also home to Kruger National Park, where you can see lions, elephants, and rhinos all in one place."},
+  "South Korea":  {e:"🏯",f:"South Korea has 5 UNESCO World Heritage palaces right in Seoul — some over 600 years old! It's also the birthplace of K-Pop and one of the most tech-advanced countries on Earth."},
+  "Czech Republic":{e:"🏰",f:"The Czech Republic has more castles per square mile than almost anywhere in Europe! Its capital Prague is one of the best-preserved medieval cities in the world."},
+  "Canada":       {e:"🍁",f:"Canada has the longest coastline of any country — over 125,000 miles! If you walked it non-stop, it would take about 4.5 years to finish."},
+  "Bosnia-Herzegovina":{e:"🌉",f:"Bosnia-Herzegovina has over 100 waterfalls and the beautiful Stari Most bridge in Mostar, built in 1566. It was destroyed in war but lovingly rebuilt by hand!"},
+  "Qatar":        {e:"🌴",f:"Qatar transformed from one of the world's poorest countries to one of the richest in just one generation after discovering oil. The whole country is smaller than Connecticut!"},
+  "Switzerland":  {e:"🏔️",f:"Switzerland has FOUR official languages: German, French, Italian, and Romansh. Six major European rivers begin in the Swiss Alps, bringing fresh water to millions of people!"},
+  "Brazil":       {e:"🌿",f:"Brazil is home to the Amazon Rainforest — the world's biggest tropical jungle, containing about 10% of ALL species on Earth. It's so massive it creates its own weather!"},
+  "Morocco":      {e:"🐪",f:"Morocco and Europe almost touch — just 9 miles of ocean separate them from Spain! The Sahara Desert covers the south, where you can ride camels at sunrise."},
+  "Haiti":        {e:"🎨",f:"Haiti was the first Black-led republic in history, gaining independence in 1804 after the only successful slave-led revolution ever! It has a rich tradition of colorful art."},
+  "Scotland":     {e:"🏔️",f:"Scotland has over 790 islands and the legendary Loch Ness — where people have claimed to spot a mysterious monster for centuries! Scotland also invented the telephone and penicillin."},
+  "USA":          {e:"🏞️",f:"The USA has 63 national parks — more than any other country! From the Grand Canyon to Yellowstone, there's always something jaw-dropping to discover."},
+  "Paraguay":     {e:"🌊",f:"Paraguay is completely surrounded by other countries — one of South America's two landlocked nations! Both Spanish and Guaraní (an indigenous language) are official languages."},
+  "Australia":    {e:"🦘",f:"Australia is the only country that's also an entire continent! Home to kangaroos, koalas, wombats, and the platypus — animals found absolutely nowhere else on Earth."},
+  "Turkey":       {e:"🌉",f:"Turkey is the ONLY country that sits on TWO continents — Europe and Asia! The city of Istanbul has been one of the world's greatest cities for over 2,700 years."},
+  "Germany":      {e:"🏰",f:"Germany has over 20,000 castles — more than any other country! Many classic fairy tales like Cinderella and Snow White were inspired by real German towns and places."},
+  "Curaçao":      {e:"🏝️",f:"Curaçao is a tiny Caribbean island known for its colorful Dutch colonial buildings and crystal-clear turquoise water. Just 38 miles long but with over 35 amazing dive sites!"},
+  "Ivory Coast":  {e:"🍫",f:"Ivory Coast is the world's largest producer of cocoa beans — most of the chocolate you've ever eaten likely started as a cocoa pod grown right here!"},
+  "Ecuador":      {e:"🦎",f:"Ecuador sits right on the equator — that's literally how it got its name! The Galápagos Islands belong to Ecuador, where Darwin discovered his theory of evolution."},
+  "Netherlands":  {e:"🌷",f:"About one-third of the Netherlands is actually BELOW sea level! Dutch engineers built giant dikes to keep the ocean out. They also grow half of all the world's cut flowers!"},
+  "Japan":        {e:"🗻",f:"Japan is made up of 6,852 islands! Mount Fuji, an active volcano, is Japan's highest peak and has been considered sacred for thousands of years."},
+  "Sweden":       {e:"🌲",f:"Sweden has over 97,000 lakes and forests covering half the country. Swedes have a law giving everyone the right to roam freely in nature, even on private land!"},
+  "Tunisia":      {e:"⭐",f:"Parts of the original Star Wars were filmed in Tunisia! The desert town of Matmata, with its underground homes, became Luke Skywalker's home planet Tatooine."},
+  "Belgium":      {e:"🍫",f:"Belgium invented french fries — not France! They produce over 220,000 tons of chocolate every year and have more chocolate shops per square mile than any other country."},
+  "Egypt":        {e:"🏺",f:"Egypt has the Pyramids of Giza — the only one of the Seven Wonders of the Ancient World still standing! The Great Pyramid was the tallest human structure for 3,800 years."},
+  "Iran":         {e:"🕌",f:"Iran (ancient Persia) is one of the world's oldest civilizations — over 3,000 years old! It has 27 UNESCO World Heritage sites, including the breathtaking ancient city of Persepolis."},
+  "New Zealand":  {e:"🥝",f:"New Zealand was the first country to give women the right to vote, back in 1893! It's also where all the Lord of the Rings films were shot, thanks to its stunning landscapes."},
+  "Spain":        {e:"☀️",f:"Spain has the Sagrada Família — a cathedral under construction since 1882 that still isn't finished! Spain has more UNESCO World Heritage sites than almost any country in Europe."},
+  "Cape Verde":   {e:"🎵",f:"Cape Verde is a tiny island nation off Africa's west coast, famous for beautiful beaches and amazing music called 'morna.' It's one of Africa's most stable democracies!"},
+  "Saudi Arabia": {e:"🏜️",f:"Saudi Arabia has the world's largest continuous sand desert — the Rub' al Khali or 'Empty Quarter' — roughly the size of France! Ancient rock art there is over 8,000 years old."},
+  "Uruguay":      {e:"🏆",f:"Tiny Uruguay was the FIRST country to ever host AND win the FIFA World Cup, way back in 1930! They defeated Argentina in the final in front of 93,000 fans."},
+  "France":       {e:"🗼",f:"France is the most visited country in the world! The Louvre in Paris is the largest art museum on Earth — with over 35,000 works of art, it would take weeks to see them all."},
+  "Senegal":      {e:"🦅",f:"Senegal's Djoudj National Bird Sanctuary hosts over 3 million birds every winter — one of the most important bird sanctuaries in the entire world!"},
+  "Iraq":         {e:"📜",f:"Iraq is home to ancient Mesopotamia — where humans first invented writing and mathematics over 5,000 years ago! The city of Ur was one of the very first cities ever built."},
+  "Norway":       {e:"🌌",f:"Norway is one of the best places on Earth to see the Northern Lights — magical colors dancing across the night sky! It also has spectacular fjords carved by ancient glaciers."},
+  "Argentina":    {e:"🏔️",f:"Argentina has the tallest mountain in the Western Hemisphere — Aconcagua at nearly 23,000 feet! It also has Patagonia, one of the wildest and most beautiful places on Earth."},
+  "Algeria":      {e:"🏛️",f:"Algeria is the largest country in Africa! The Sahara covers 90% of it, but it also has spectacular ancient Roman ruins and beautiful Mediterranean beaches in the north."},
+  "Austria":      {e:"🎵",f:"Austria is the birthplace of Mozart! The city of Vienna was the music capital of the world for centuries. Austria also has spectacular Alpine mountains and gorgeous medieval villages."},
+  "Jordan":       {e:"🏜️",f:"Jordan is home to Petra — the 'Rose City' carved directly into pink rock cliffs over 2,000 years ago. It's one of the New Seven Wonders of the World!"},
+  "Portugal":     {e:"🌊",f:"Portuguese explorers in the 1400s were the first Europeans to sail around Africa and reach India by sea, helping connect the whole world for the very first time!"},
+  "DR Congo":     {e:"🦍",f:"The DR Congo has the second-largest rainforest in the world and is home to gorillas, okapis, and bonobos — incredible animals found nowhere else on Earth!"},
+  "Uzbekistan":   {e:"🕌",f:"Uzbekistan was the heart of the ancient Silk Road — the trade route connecting China to Europe for 1,000 years! Samarkand's blue-tiled mosques are some of the most beautiful ever built."},
+  "Colombia":     {e:"💎",f:"Colombia is the ONLY South American country with coastlines on BOTH the Pacific Ocean AND the Caribbean Sea! It's also the world's number one producer of emeralds."},
+  "England":      {e:"⚽",f:"England literally invented soccer! The Football Association wrote the very first official rules of the game in London in 1863 — every team here plays by those original rules."},
+  "Croatia":      {e:"🏖️",f:"Croatia has over 1,200 islands along its sparkling Adriatic coast! The ancient walled city of Dubrovnik was used as 'King's Landing' in Game of Thrones."},
+  "Ghana":        {e:"🥁",f:"Ghana was the first country in sub-Saharan Africa to gain independence in 1957! Famous for vibrant music, beautiful hand-woven kente cloth, and a rich cultural heritage."},
+  "Panama":       {e:"🚢",f:"Panama built the Panama Canal — connecting the Atlantic and Pacific Oceans, saving ships from traveling 8,000 extra miles around South America. One of history's greatest engineering feats!"},
+};
+const getFact = n => FACTS[n] || {e:"⚽",f:`${n} is one of 48 nations in the historic 2026 FIFA World Cup, hosted across the USA, Canada, and Mexico!`};
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════
+const fmtDate = s => {
+  try { return new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}); }
+  catch { return s; }
+};
+const addDays = (s,n) => {
+  const d = new Date(s+"T12:00:00"); d.setDate(d.getDate()+n);
+  return d.toISOString().split("T")[0];
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STANDINGS CALCULATOR
+// ═══════════════════════════════════════════════════════════════
+const calcStandings = () => {
+  const stats = {};
+  const init = n => { if (!stats[n]) stats[n]={name:n,played:0,w:0,d:0,l:0,gf:0,ga:0}; };
+  MATCHES.forEach(m => {
+    if (m.score1==null||m.score2==null) return;
+    init(m.team1); init(m.team2);
+    stats[m.team1].played++; stats[m.team2].played++;
+    stats[m.team1].gf+=m.score1; stats[m.team1].ga+=m.score2;
+    stats[m.team2].gf+=m.score2; stats[m.team2].ga+=m.score1;
+    if(m.score1>m.score2){stats[m.team1].w++;stats[m.team2].l++;}
+    else if(m.score2>m.score1){stats[m.team2].w++;stats[m.team1].l++;}
+    else{stats[m.team1].d++;stats[m.team2].d++;}
+  });
+  return Object.entries(GROUP_MAP).map(([grp,teams])=>({
+    name:grp,
+    standings:teams.map(t=>{
+      const s=stats[t]||{name:t,played:0,w:0,d:0,l:0,gf:0,ga:0};
+      return{...s,gd:s.gf-s.ga,pts:s.w*3+s.d};
+    }).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf)
+  }));
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SUMMARY (AI with programmatic fallback)
+// ═══════════════════════════════════════════════════════════════
+function makeSummary(m) {
+  const h = m.team1, a = m.team2, hs = m.score1, as_ = m.score2, grp = m.group;
+  const g1 = (m.goals1||[]), g2 = (m.goals2||[]), rc = (m.redCards||[]);
+  let s = "";
+  if (hs > as_) s = `What a game! ${fl(h)} ${h} beat ${fl(a)} ${a} ${hs}–${as_} and picks up 3 huge points in Group ${grp}! `;
+  else if (as_ > hs) s = `Exciting result! ${fl(a)} ${a} beat ${fl(h)} ${h} ${as_}–${hs} and earned 3 big points in Group ${grp}! `;
+  else s = `They couldn't be separated! ${fl(h)} ${h} and ${fl(a)} ${a} drew ${hs}–${as_} in Group ${grp}, each taking home 1 point. `;
+  const allGoals = [...g1.map(g=>({...g,team:h})),...g2.map(g=>({...g,team:a}))].sort((a,b)=>parseInt(a.minute)-parseInt(b.minute));
+  if (allGoals.length) s += "The goals: " + allGoals.map(g=>`${fl(g.team)} ${g.name} (${g.minute}')`).join(", ") + ". ";
+  if (rc.length) {
+    s += `🟥 This match had ${rc.length > 1 ? rc.length+" red cards" : "a red card"} — `;
+    s += rc.map(r=>`${r.player} (${r.team}, ${r.minute}')`).join(" and ");
+    s += ` ${rc.length>1?"were":"was"} sent off. A red card means a player is ejected and can't return — their team must play short-handed! `;
+  }
+  if (hs > as_) s += `In the World Cup, teams earn 3 points for a win and 1 for a draw — they need enough to advance to the knockout rounds. ${h} is in great shape! 🌟`;
+  else if (as_ > hs) s += `In the World Cup, teams earn 3 points for a win and 1 for a draw — they need enough to advance to the knockout rounds. ${a} is in great shape! 🌟`;
+  else s += `Both teams will be hoping for a win next time — they need enough points to reach the knockout rounds! 🤞`;
+  return s;
+}
+
+async function getAISummary(m) {
+  const g1 = (m.goals1||[]).map(g=>`${g.name} (${g.minute}')`).join(", ");
+  const g2 = (m.goals2||[]).map(g=>`${g.name} (${g.minute}')`).join(", ");
+  const rc = (m.redCards||[]).map(r=>`${r.player} (${r.team}, ${r.minute}')`).join(", ");
+  const prompt = `Write a fun, warm 3-4 sentence World Cup recap for a dad sharing with his two 10-year-old daughters who love geography and travel but are new to soccer. Simple language only!\n\nMatch: ${m.team1} ${m.score1}–${m.score2} ${m.team2} | Group ${m.group} | ${m.venue}, ${m.city}\n${g1?m.team1+" scored: "+g1:""}\n${g2?m.team2+" scored: "+g2:""}\n${rc?"🟥 Red cards: "+rc+" (ejected — team plays short-handed)":""}\n\nCover: (1) exciting result, (2) standout moments, (3) what these points mean for Group ${m.group} — 3 pts for win, 1 for draw, need enough to advance.`;
+  const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const data = await res.json();
+  if(data.type==="error"||!data.content) throw new Error("API unavailable");
+  return data.content?.[0]?.text || null;
+}
+
+async function getSummary(m) {
+  try { const ai = await getAISummary(m); if(ai) return {text:ai,ai:true}; } catch {}
+  return {text:makeSummary(m),ai:false};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLORS
+// ═══════════════════════════════════════════════════════════════
+const C = {bg:"#08111E",card:"#0F1E35",border:"#1B3254",green:"#00D158",gold:"#FFD700",red:"#FF3B30",blue:"#4A9EE8",text:"#EEF2F7",muted:"#6B8CAE",adv:"rgba(0,209,88,0.1)",goldBg:"rgba(255,215,0,0.1)"};
+
+// ═══════════════════════════════════════════════════════════════
+// COMPONENTS
+// ═══════════════════════════════════════════════════════════════
+function MatchCard({m}) {
+  const done = m.score1!=null&&m.score2!=null;
+  const rc = m.redCards||[];
+  return (
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <span style={{background:C.goldBg,color:C.gold,borderRadius:5,padding:"3px 8px",fontSize:11,fontWeight:700}}>GROUP {m.group}</span>
+        <span style={{color:C.muted,fontSize:12}}>{m.time}</span>
+        <span style={{background:done?"rgba(0,209,88,.18)":"rgba(74,158,232,.18)",color:done?C.green:C.blue,borderRadius:4,padding:"3px 8px",fontSize:11,fontWeight:700}}>{done?"FINAL":"UPCOMING"}</span>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{flex:1,textAlign:"center"}}>
+          <div style={{fontSize:36}}>{fl(m.team1)}</div>
+          <div style={{fontSize:13,fontWeight:700,marginTop:5,color:C.text}}>{m.team1}</div>
+          {done&&m.goals1.length>0&&<div style={{fontSize:10,color:C.muted,marginTop:3,lineHeight:1.6}}>{m.goals1.map(g=>`⚽ ${g.name} ${g.minute}'`).join("\n")}</div>}
+          {done&&rc.filter(r=>r.team===m.team1).length>0&&<div style={{fontSize:10,color:C.red,marginTop:2}}>🟥 {rc.filter(r=>r.team===m.team1).map(r=>`${r.player} ${r.minute}'`).join(", ")}</div>}
+        </div>
+        <div style={{textAlign:"center",minWidth:80}}>
+          {done?<div style={{fontSize:30,fontWeight:900,color:C.text}}>{m.score1}<span style={{color:C.muted,margin:"0 4px"}}>–</span>{m.score2}</div>
+               :<div style={{fontSize:18,color:C.muted}}>vs</div>}
+        </div>
+        <div style={{flex:1,textAlign:"center"}}>
+          <div style={{fontSize:36}}>{fl(m.team2)}</div>
+          <div style={{fontSize:13,fontWeight:700,marginTop:5,color:C.text}}>{m.team2}</div>
+          {done&&m.goals2.length>0&&<div style={{fontSize:10,color:C.muted,marginTop:3,lineHeight:1.6}}>{m.goals2.map(g=>`⚽ ${g.name} ${g.minute}'`).join("\n")}</div>}
+          {done&&rc.filter(r=>r.team===m.team2).length>0&&<div style={{fontSize:10,color:C.red,marginTop:2}}>🟥 {rc.filter(r=>r.team===m.team2).map(r=>`${r.player} ${r.minute}'`).join(", ")}</div>}
+        </div>
+      </div>
+      {m.city&&m.city!=="TBD"&&<div style={{marginTop:11,textAlign:"center",color:C.muted,fontSize:12}}>🏟️ {m.venue}, {m.city}</div>}
+    </div>
+  );
+}
+
+function SummaryCard({m}) {
+  const [state,setState] = useState({text:null,loading:false,ai:false});
+  const hf=getFact(m.team1), af=getFact(m.team2), rc=m.redCards||[];
+  const generate = async()=>{
+    setState(s=>({...s,loading:true}));
+    const res = await getSummary(m);
+    setState({text:res.text,loading:false,ai:res.ai});
+  };
+  return (
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:6}}>
+        <span style={{fontSize:28}}>{fl(m.team1)}</span>
+        <span style={{fontSize:22,fontWeight:900,color:C.text}}>{m.score1} – {m.score2}</span>
+        <span style={{fontSize:28}}>{fl(m.team2)}</span>
+      </div>
+      <div style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:10}}>{m.team1} vs {m.team2} · Group {m.group}</div>
+      {(m.goals1.length>0||m.goals2.length>0||rc.length>0)&&(
+        <div style={{background:"rgba(255,255,255,.03)",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:12,lineHeight:1.8,color:"#A8BDD0",textAlign:"center"}}>
+          {m.goals1.map(g=><div key={g.name}>{fl(m.team1)} ⚽ {g.name} {g.minute}'</div>)}
+          {m.goals2.map(g=><div key={g.name}>{fl(m.team2)} ⚽ {g.name} {g.minute}'</div>)}
+          {rc.map(r=><div key={r.player} style={{color:C.red}}>🟥 {r.player} ({r.team}) {r.minute}'</div>)}
+        </div>
+      )}
+      {!state.text&&!state.loading&&(
+        <button onClick={generate} style={{width:"100%",padding:12,borderRadius:10,background:"linear-gradient(135deg,#00A843,#00D158)",color:"#fff",fontWeight:700,fontSize:14,border:"none",cursor:"pointer",marginBottom:14}}>
+          ✨ Read Game Summary
+        </button>
+      )}
+      {state.loading&&<div style={{textAlign:"center",padding:"16px 0",color:C.muted,marginBottom:14}}><div style={{fontSize:26}}>⚽</div><div style={{fontSize:13,marginTop:6}}>Generating recap...</div></div>}
+      {state.text&&(
+        <div style={{marginBottom:16}}>
+          <div style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"14px 15px",fontSize:14,lineHeight:1.75,color:C.text}}>{state.text}</div>
+          {state.ai&&<div style={{textAlign:"center",fontSize:10,color:C.muted,marginTop:6}}>✨ AI-generated summary</div>}
+        </div>
+      )}
+      <div style={{borderTop:`1px solid ${C.border}`,paddingTop:13}}>
+        <div style={{fontSize:11,color:C.gold,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>🗺️ Fun Facts for Curious Travelers</div>
+        {[{name:m.team1,d:hf},{name:m.team2,d:af}].map(({name,d})=>(
+          <div key={name} style={{border:"1.5px dashed rgba(255,215,0,.25)",borderRadius:10,padding:"10px 12px",marginBottom:8,fontSize:13,lineHeight:1.6,color:"#C4D4E4"}}>
+            <span style={{fontSize:18,marginRight:6}}>{d.e}</span><strong style={{color:C.text}}>{name}:</strong>{" "}{d.f}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GroupTable({g}) {
+  return (
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:"hidden",marginBottom:12}}>
+      <div style={{background:C.goldBg,borderBottom:`1px solid ${C.border}`,padding:"10px 14px",fontWeight:800,fontSize:13,color:C.gold}}>GROUP {g.name}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead><tr>{["#","Team","P","W","D","L","GD","Pts"].map((h,i)=>(
+          <th key={i} style={{padding:"8px 8px",fontWeight:500,fontSize:11,color:h==="Pts"?C.green:C.muted,textAlign:i<2?"left":"center"}}>{h}</th>
+        ))}</tr></thead>
+        <tbody>{g.standings.map((t,i)=>{
+          const adv=i<2;
+          return <tr key={i} style={{background:adv?C.adv:"transparent",borderTop:`1px solid ${C.border}`}}>
+            <td style={{padding:"10px 8px",color:adv?C.green:C.muted,fontWeight:700,textAlign:"left"}}>{i+1}</td>
+            <td style={{padding:"10px 8px",textAlign:"left"}}><span style={{marginRight:6}}>{fl(t.name)}</span><span style={{fontWeight:600,color:C.text}}>{t.name}</span>{adv&&<span style={{marginLeft:5,fontSize:10,color:C.green}}>↑</span>}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",color:C.muted}}>{t.played}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",color:C.muted}}>{t.w}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",color:C.muted}}>{t.d}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",color:C.muted}}>{t.l}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",color:C.muted}}>{t.gd>=0?"+":""}{t.gd}</td>
+            <td style={{padding:"10px 8px",textAlign:"center",fontWeight:900,color:C.green}}>{t.pts}</td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════════
+const GROUPS = calcStandings();
+
+function App() {
+  const [tab,setTab] = useState("schedule");
+  const [dateStr,setDateStr] = useState("2026-06-11");
+  const TABS = [{id:"schedule",label:"📅 Schedule"},{id:"standings",label:"🏆 Standings"},{id:"summaries",label:"📰 Summaries"}];
+  const dayMatches = MATCHES.filter(m=>m.date===dateStr);
+  const completed = dayMatches.filter(m=>m.score1!=null&&m.score2!=null);
+
+  return (
+    <div style={{background:C.bg,minHeight:"100vh",maxWidth:600,margin:"0 auto",color:C.text,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <div style={{background:"linear-gradient(180deg,#0C1F3D,#08111E)",borderBottom:`3px solid ${C.green}`,padding:"20px 16px 14px",position:"sticky",top:0,zIndex:10}}>
+        <div style={{textAlign:"center",marginBottom:14}}>
+          <div style={{fontSize:11,color:C.gold,letterSpacing:3,fontWeight:700,textTransform:"uppercase"}}>FIFA World Cup 2026</div>
+          <div style={{fontSize:26,fontWeight:900,letterSpacing:-0.5,marginTop:2}}>⚽ Match Tracker</div>
+          <div style={{fontSize:11,color:C.muted,marginTop:2,letterSpacing:1}}>USA · CANADA · MEXICO</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+          <button onClick={()=>setDateStr(s=>addDays(s,-1))} style={{background:"rgba(255,255,255,.07)",border:`1px solid ${C.border}`,color:C.text,borderRadius:10,width:42,height:42,fontSize:20,cursor:"pointer"}}>‹</button>
+          <div style={{textAlign:"center",minWidth:200}}>
+            <div style={{fontSize:15,fontWeight:700}}>{fmtDate(dateStr)}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:2}}>{dayMatches.length>0?`${dayMatches.length} match${dayMatches.length>1?"es":""} · ${completed.length} final`:"No matches"}</div>
+          </div>
+          <button onClick={()=>setDateStr(s=>addDays(s,1))} style={{background:"rgba(255,255,255,.07)",border:`1px solid ${C.border}`,color:C.text,borderRadius:10,width:42,height:42,fontSize:20,cursor:"pointer"}}>›</button>
+        </div>
+      </div>
+
+      <div style={{display:"flex",background:"#0C1A2E",borderBottom:`1px solid ${C.border}`}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"13px 4px",background:"none",border:"none",borderBottom:tab===t.id?`3px solid ${C.green}`:"3px solid transparent",color:tab===t.id?C.green:C.muted,fontWeight:tab===t.id?700:400,fontSize:13,cursor:"pointer"}}>{t.label}</button>
+        ))}
+      </div>
+
+      <div style={{padding:16}}>
+        {tab==="schedule"&&(dayMatches.length===0
+          ?<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}><div style={{fontSize:44,marginBottom:10}}>📅</div><div style={{fontWeight:700,fontSize:16,marginBottom:6}}>No matches scheduled</div><div style={{fontSize:13}}>Tap the arrows to browse match days</div></div>
+          :dayMatches.map((m,i)=><MatchCard key={i} m={m}/>)
+        )}
+
+        {tab==="standings"&&(
+          <>
+            <div style={{background:"rgba(0,209,88,.08)",border:"1px solid rgba(0,209,88,.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:C.green,textAlign:"center",marginBottom:16}}>↑ Top 2 per group advance · Plus the 8 best 3rd-place teams</div>
+            {GROUPS.map((g,i)=><GroupTable key={i} g={g}/>)}
+          </>
+        )}
+
+        {tab==="summaries"&&(completed.length===0
+          ?<div style={{textAlign:"center",padding:"60px 20px",color:C.muted}}><div style={{fontSize:44,marginBottom:10}}>📰</div><div style={{fontWeight:700,fontSize:16,marginBottom:6}}>{dayMatches.length>0?"Games not finished yet":"No matches this day"}</div><div style={{fontSize:13}}>{dayMatches.length>0?"Check back after the games!":"Navigate to June 11 to read the first recaps"}</div></div>
+          :<>{<div style={{fontSize:12,color:C.muted,textAlign:"center",marginBottom:14}}>Tap "Read Game Summary" for a fun recap ✨</div>}{completed.map((m,i)=><SummaryCard key={i} m={m}/>)}</>
+        )}
+
+        <div style={{textAlign:"center",padding:"20px 0 8px",color:C.muted,fontSize:11}}>Schedule verified June 12, 2026 · All times in CDT</div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
