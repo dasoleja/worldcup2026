@@ -140,7 +140,35 @@ const toCDT = utc => {
 };
 
 /* ═══════════ ESPN API FETCH ═══════════ */
-async function fetchESPN(dateStr) {
+async function fetchStandings() {
+  const url = `https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("ESPN standings error");
+  const data = await res.json();
+  const groups = [];
+  for (const entry of (data.children || [])) {
+    const groupName = entry.name?.replace("Group ","").trim() || "?";
+    const standings = (entry.standings?.entries || []).map(e => {
+      const team = e.team?.displayName || e.team?.name || "TBD";
+      const stats = {};
+      (e.stats || []).forEach(s => { stats[s.name] = s.value; });
+      return {
+        name: team,
+        played: stats.gamesPlayed || 0,
+        w: stats.wins || 0,
+        d: stats.ties || 0,
+        l: stats.losses || 0,
+        gf: stats.pointsFor || 0,
+        ga: stats.pointsAgainst || 0,
+        gd: stats.pointDifferential || 0,
+        pts: stats.points || 0,
+      };
+    });
+    groups.push({ name: groupName, standings });
+  }
+  return groups;
+}
+  async function fetchESPN(dateStr) {
   const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${fmtESPNDate(dateStr)}&limit=20`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("ESPN API error");
@@ -369,6 +397,7 @@ function App() {
   const [loading,setLoading]=useState(false);
   const [lastUpdate,setLastUpdate]=useState(null);
   const [dataSource,setDataSource]=useState("hardcoded");
+  const [liveGroups,setLiveGroups]=useState([]);
   const timerRef=useRef(null);
 const loadStandings = useCallback(async()=>{
   const start = new Date("2026-06-11T12:00:00");
@@ -404,7 +433,11 @@ const loadStandings = useCallback(async()=>{
   },[]);
 
   // On date change, load that day from ESPN
- useEffect(()=>{ loadStandings(); },[loadStandings]);
+useEffect(()=>{
+  fetchStandings().then(g=>{ if(g.length>0) setLiveGroups(g); }).catch(()=>{});
+  const t=setInterval(()=>fetchStandings().then(g=>{ if(g.length>0) setLiveGroups(g); }).catch(()=>{}),60000);
+  return ()=>clearInterval(t);
+},[]);
   useEffect(()=>{
     loadDay(dateStr);
     clearInterval(timerRef.current);
@@ -424,7 +457,7 @@ const loadStandings = useCallback(async()=>{
 
   const dayMatches = allMatches.filter(m=>m.date===dateStr);
   const completed = dayMatches.filter(m=>m.score1!=null&&m.score2!=null);
-  const groups = calcStandings(allMatches);
+ const groups = liveGroups.length > 0 ? liveGroups : calcStandings(allMatches);
   const TABS=[{id:"schedule",label:"📅 Schedule"},{id:"standings",label:"🏆 Standings"},{id:"summaries",label:"📰 Summaries"}];
 
   return (
