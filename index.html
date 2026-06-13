@@ -164,6 +164,7 @@ async function fetchStandings() {
         pts: stats.points || 0,
       };
     });
+standings.sort((a,b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
     groups.push({ name: groupName, standings });
   }
   return groups;
