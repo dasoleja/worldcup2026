@@ -370,7 +370,20 @@ function App() {
   const [lastUpdate,setLastUpdate]=useState(null);
   const [dataSource,setDataSource]=useState("hardcoded");
   const timerRef=useRef(null);
-
+const loadStandings = useCallback(async()=>{
+  const start = new Date("2026-06-11T12:00:00");
+  const today = new Date();
+  const dates = [];
+  for(let d=new Date(start); d<=today; d.setDate(d.getDate()+1)){
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  try {
+    const results = await Promise.all(dates.map(d=>fetchESPN(d).catch(()=>[])));
+    const newCache = {};
+    dates.forEach((d,i)=>{ if(results[i].length>0) newCache[d]=results[i]; });
+    if(Object.keys(newCache).length>0) setMatchCache(prev=>({...prev,...newCache}));
+  } catch {}
+},[]);
   const loadDay = useCallback(async(date, silent=false)=>{
     if(!silent) setLoading(true);
     try {
@@ -391,6 +404,7 @@ function App() {
   },[]);
 
   // On date change, load that day from ESPN
+ useEffect(()=>{ loadStandings(); },[loadStandings]);
   useEffect(()=>{
     loadDay(dateStr);
     clearInterval(timerRef.current);
