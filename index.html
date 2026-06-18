@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FIFA World Cup 2026 · Match Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08111E; font-family: 'Segoe UI', system-ui, sans-serif; color: #EEF2F7; }
+    button { font-family: inherit; }
+    ::-webkit-scrollbar { display: none; }
+    .tab-btn { flex: 1; padding: 13px 4px; background: none; border: none; border-bottom: 3px solid transparent; color: #6B8CAE; font-weight: 400; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { border-bottom-color: #00D158; color: #00D158; font-weight: 700; }
+    input:focus { border-color: #4A9EE8 !important; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script>
+// ─── All hooks ───
+var useState   = React.useState;
+var useEffect  = React.useEffect;
+var useCallback= React.useCallback;
+var useRef     = React.useRef;
+var createElement = React.createElement;
+var e = createElement;
+
+// ─── Colors ───
+var C = {
+  bg:"#08111E", card:"#0F1E35", border:"#1B3254",
+  green:"#00D158", gold:"#FFD700", red:"#FF3B30",
+  blue:"#4A9EE8", text:"#EEF2F7", muted:"#6B8CAE",
+  adv:"rgba(0,209,88,0.1)", goldBg:"rgba(255,215,0,0.1)"
+};
+
+// ─── Groups ───
+var GROUP_MAP = {
+  A:["Mexico","South Africa","South Korea","Czech Republic"],
+  B:["Canada","Bosnia and Herzegovina","Qatar","Switzerland"],
+  C:["Brazil","Morocco","Haiti","Scotland"],
+  D:["United States","Paraguay","Australia","Turkey"],
+  E:["Germany","Curaçao","Ivory Coast","Ecuador"],
+  F:["Netherlands","Japan","Sweden","Tunisia"],
+  G:["Belgium","Egypt","IR Iran","New Zealand"],
+  H:["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+  I:["France","Senegal","Iraq","Norway"],
+  J:["Argentina","Algeria","Austria","Jordan"],
+  K:["Portugal","DR Congo","Uzbekistan","Colombia"],
+  L:["England","Croatia","Ghana","Panama"]
+};
+
+function getGroup(name) {
+  if (!name) return "?";
+  var keys = Object.keys(GROUP_MAP);
+  for (var i = 0; i < keys.length; i++) {
+    var grp = keys[i];
+    var teams = GROUP_MAP[grp];
+    for (var j = 0; j < teams.length; j++) {
+      var t = teams[j].toLowerCase();
+      var n = name.toLowerCase();
+      if (t === n || n.includes(t) || t.includes(n)) return grp;
+    }
+  }
+  return "?";
+}
+
+// ─── Flags ───
+var FLAG = {
+  "Mexico":"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷","Korea Republic":"🇰🇷",
+  "Czech Republic":"🇨🇿","Canada":"🇨🇦","Bosnia and Herzegovina":"🇧🇦","Bosnia-Herzegovina":"🇧🇦",
+  "Qatar":"🇶🇦","Switzerland":"🇨🇭","Brazil":"🇧🇷","Morocco":"🇲🇦","Haiti":"🇭🇹",
+  "Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","United States":"🇺🇸","USA":"🇺🇸","Paraguay":"🇵🇾",
+  "Australia":"🇦🇺","Turkey":"🇹🇷","Germany":"🇩🇪","Curaçao":"🇨🇼",
+  "Ivory Coast":"🇨🇮","Côte d'Ivoire":"🇨🇮","Ecuador":"🇪🇨","Netherlands":"🇳🇱",
+  "Japan":"🇯🇵","Sweden":"🇸🇪","Tunisia":"🇹🇳","Belgium":"🇧🇪","Egypt":"🇪🇬",
+  "IR Iran":"🇮🇷","Iran":"🇮🇷","New Zealand":"🇳🇿","Spain":"🇪🇸","Cape Verde":"🇨🇻",
+  "Saudi Arabia":"🇸🇦","Uruguay":"🇺🇾","France":"🇫🇷","Senegal":"🇸🇳",
+  "Iraq":"🇮🇶","Norway":"🇳🇴","Argentina":"🇦🇷","Algeria":"🇩🇿",
+  "Austria":"🇦🇹","Jordan":"🇯🇴","Portugal":"🇵🇹","DR Congo":"🇨🇩",
+  "Uzbekistan":"🇺🇿","Colombia":"🇨🇴","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷",
+  "Ghana":"🇬🇭","Panama":"🇵🇦"
+};
+function fl(n) { return FLAG[n] || "🏳️"; }
+
+// ─── Fun Facts ───
+var FACTS = {
+  "Mexico":       {e:"🌮",f:"Mexico has over 35 UNESCO World Heritage sites, including ancient Mayan pyramids. Mexico City was built on top of the Aztec capital Tenochtitlan — over 700 years ago!"},
+  "South Africa": {e:"🦁",f:"South Africa is the only country with THREE capital cities! Home to Kruger National Park, where you can see lions, elephants, and rhinos all in one place."},
+  "South Korea":  {e:"🏯",f:"South Korea has 5 UNESCO World Heritage palaces in Seoul — some over 600 years old! It's the birthplace of K-Pop and one of the most tech-advanced countries on Earth."},
+  "Korea Republic":{e:"🏯",f:"South Korea has 5 UNESCO World Heritage palaces in Seoul — some over 600 years old! It's the birthplace of K-Pop and one of the most tech-advanced countries on Earth."},
+  "Czech Republic":{e:"🏰",f:"The Czech Republic has more castles per square mile than almost anywhere in Europe! Its capital Prague is one of the most beautiful medieval cities in the world."},
+  "Canada":       {e:"🍁",f:"Canada has the longest coastline of any country — over 125,000 miles! If you walked it non-stop, it would take about 4.5 years to finish."},
+  "Bosnia and Herzegovina":{e:"🌉",f:"Bosnia-Herzegovina has over 100 waterfalls and the beautiful Stari Most bridge in Mostar, built in 1566 and lovingly rebuilt after it was destroyed in war."},
+  "Bosnia-Herzegovina":{e:"🌉",f:"Bosnia-Herzegovina has over 100 waterfalls and the beautiful Stari Most bridge in Mostar, built in 1566 and lovingly rebuilt after it was destroyed in war."},
+  "Qatar":        {e:"🌴",f:"Qatar transformed from one of the world's poorest countries to one of the richest in just one generation after discovering oil. The whole country is smaller than Connecticut!"},
+  "Switzerland":  {e:"🏔️",f:"Switzerland has FOUR official languages: German, French, Italian, and Romansh. Six major European rivers begin in the Swiss Alps, bringing fresh water to millions!"},
+  "Brazil":       {e:"🌿",f:"Brazil is home to the Amazon Rainforest — the world's biggest tropical jungle, containing about 10% of ALL species on Earth. It's so massive it creates its own weather!"},
+  "Morocco":      {e:"🐪",f:"Morocco and Europe almost touch — just 9 miles of ocean separate them from Spain! The Sahara Desert covers the south, where you can ride camels at sunrise."},
+  "Haiti":        {e:"🎨",f:"Haiti was the first Black-led republic in history, gaining independence in 1804 after the only successful slave-led revolution ever! It has a rich tradition of colorful art."},
+  "Scotland":     {e:"🏔️",f:"Scotland has over 790 islands and the legendary Loch Ness — where people have claimed to spot a monster for centuries! Scotland also invented the telephone and penicillin."},
+  "United States":{e:"🏞️",f:"The USA has 63 national parks — more than any other country! From the Grand Canyon to Yellowstone, there's always something jaw-dropping to discover."},
+  "USA":          {e:"🏞️",f:"The USA has 63 national parks — more than any other country! From the Grand Canyon to Yellowstone, there's always something jaw-dropping to discover."},
+  "Paraguay":     {e:"🌊",f:"Paraguay is completely surrounded by other countries — one of South America's two landlocked nations! Both Spanish and Guaraní are official languages."},
+  "Australia":    {e:"🦘",f:"Australia is the only country that's also an entire continent! Home to kangaroos, koalas, wombats, and the platypus — animals found nowhere else on Earth."},
+  "Turkey":       {e:"🌉",f:"Turkey is the ONLY country that sits on TWO continents — Europe and Asia! Istanbul has been one of the world's greatest cities for 2,700 years."},
+  "Germany":      {e:"🏰",f:"Germany has over 20,000 castles — more than any other country! Many fairy tales like Cinderella and Snow White were inspired by real German towns."},
+  "Curaçao":      {e:"🏝️",f:"Curaçao is a tiny Caribbean island known for colorful Dutch colonial buildings and crystal-clear turquoise water. Just 38 miles long with over 35 amazing dive sites!"},
+  "Ivory Coast":  {e:"🍫",f:"Ivory Coast is the world's largest producer of cocoa beans — most of the chocolate you've ever eaten likely started as a cocoa pod grown right here!"},
+  "Ecuador":      {e:"🦎",f:"Ecuador sits right on the equator — that's literally how it got its name! The Galápagos Islands belong to Ecuador, where Darwin discovered his theory of evolution."},
+  "Netherlands":  {e:"🌷",f:"About one-third of the Netherlands is actually BELOW sea level! Dutch engineers built giant dikes to keep the ocean out. They also grow half of the world's cut flowers!"},
+  "Japan":        {e:"🗻",f:"Japan is made up of 6,852 islands! Mount Fuji, an active volcano, is Japan's highest peak and has been considered sacred for thousands of years."},
+  "Sweden":       {e:"🌲",f:"Sweden has over 97,000 lakes and forests covering half the country. Swedes have a law giving everyone the right to roam freely in nature, even on private land!"},
+  "Tunisia":      {e:"⭐",f:"Parts of Star Wars were filmed in Tunisia! The desert town of Matmata, with underground homes carved into rock, became Luke Skywalker's home planet Tatooine."},
+  "Belgium":      {e:"🍫",f:"Belgium invented french fries — not France! They produce over 220,000 tons of chocolate every year and have more chocolate shops per square mile than any other country."},
+  "Egypt":        {e:"🏺",f:"Egypt has the Pyramids of Giza — the only one of the Seven Wonders of the Ancient World still standing! The Great Pyramid was the tallest human structure for 3,800 years."},
+  "IR Iran":      {e:"🕌",f:"Iran (ancient Persia) is one of the world's oldest civilizations — over 3,000 years old! It has 27 UNESCO World Heritage sites including the breathtaking ancient city of Persepolis."},
+  "Iran":         {e:"🕌",f:"Iran (ancient Persia) is one of the world's oldest civilizations — over 3,000 years old! It has 27 UNESCO World Heritage sites including the city of Persepolis."},
+  "New Zealand":  {e:"🥝",f:"New Zealand was the first country to give women the right to vote, back in 1893! It's also where all the Lord of the Rings films were shot, thanks to its stunning landscapes."},
+  "Spain":        {e:"☀️",f:"Spain has the Sagrada Família — a cathedral under construction since 1882 that still isn't finished! Spain has more UNESCO World Heritage sites than almost any country in Europe."},
+  "Cape Verde":   {e:"🎵",f:"Cape Verde is a tiny island nation off Africa's west coast, famous for beautiful beaches and amazing music called 'morna.' It's one of Africa's most stable democracies!"},
+  "Saudi Arabia": {e:"🏜️",f:"Saudi Arabia has the world's largest continuous sand desert — the Empty Quarter — roughly the size of France! Ancient rock art there is over 8,000 years old."},
+  "Uruguay":      {e:"🏆",f:"Tiny Uruguay was the FIRST country to ever host AND win the FIFA World Cup, way back in 1930! They defeated Argentina in the final in front of 93,000 fans."},
+  "France":       {e:"🗼",f:"France is the most visited country in the world! The Louvre in Paris is the largest art museum on Earth — with over 35,000 works of art, it would take weeks to see them all."},
+  "Senegal":      {e:"🦅",f:"Senegal's Djoudj National Bird Sanctuary hosts over 3 million birds every winter — one of the most important bird sanctuaries in the entire world!"},
+  "Iraq":         {e:"📜",f:"Iraq is home to ancient Mesopotamia — where humans first invented writing and math over 5,000 years ago! The city of Ur was one of the very first cities ever built."},
+  "Norway":       {e:"🌌",f:"Norway is one of the best places on Earth to see the Northern Lights — magical colors dancing across the night sky! It also has spectacular fjords carved by ancient glaciers."},
+  "Argentina":    {e:"🏔️",f:"Argentina has the tallest mountain in the Western Hemisphere — Aconcagua at nearly 23,000 feet! It also has Patagonia, one of the wildest and most beautiful places on Earth."},
+  "Algeria":      {e:"🏛️",f:"Algeria is the largest country in Africa! The Sahara covers 90% of it, but it also has spectacular ancient Roman ruins and beautiful Mediterranean beaches in the north."},
+  "Austria":      {e:"🎵",f:"Austria is the birthplace of Mozart! Vienna was the music capital of the world for centuries. Austria also has spectacular Alpine mountains and gorgeous medieval villages."},
+  "Jordan":       {e:"🏜️",f:"Jordan is home to Petra — the Rose City carved directly into pink rock cliffs over 2,000 years ago. It's one of the New Seven Wonders of the World!"},
+  "Portugal":     {e:"🌊",f:"Portuguese explorers in the 1400s were the first Europeans to sail around Africa and reach India by sea, helping connect the whole world for the very first time!"},
+  "DR Congo":     {e:"🦍",f:"The DR Congo has the second-largest rainforest in the world and is home to gorillas, okapis, and bonobos — incredible animals found nowhere else on Earth!"},
+  "Uzbekistan":   {e:"🕌",f:"Uzbekistan was the heart of the ancient Silk Road — connecting China to Europe for 1,000 years! Samarkand's blue-tiled mosques are some of the most beautiful ever built."},
+  "Colombia":     {e:"💎",f:"Colombia is the ONLY South American country with coastlines on BOTH the Pacific Ocean AND the Caribbean Sea! It's also the world's number one producer of emeralds."},
+  "England":      {e:"⚽",f:"England literally invented soccer! The Football Association wrote the very first official rules of the game in London in 1863 — every team here plays by those original rules."},
+  "Croatia":      {e:"🏖️",f:"Croatia has over 1,200 islands along its sparkling Adriatic coast! The ancient walled city of Dubrovnik was used as King's Landing in Game of Thrones."},
+  "Ghana":        {e:"🥁",f:"Ghana was the first country in sub-Saharan Africa to gain independence in 1957! Famous for vibrant music, beautiful hand-woven kente cloth, and a rich cultural heritage."},
+  "Panama":       {e:"🚢",f:"Panama built the Panama Canal — connecting the Atlantic and Pacific Oceans, saving ships from traveling 8,000 extra miles around South America!"}
+};
+function getFact(n) { return FACTS[n] || {e:"⚽", f: n + " is one of 48 nations in the historic 2026 FIFA World Cup, hosted across the USA, Canada, and Mexico!"}; }
+
+// ─── Fallback match data ───
+var FALLBACK = [
+  { date:"2026-06-11", time:"2:00 PM CDT", team1:"Mexico", team2:"South Africa", score1:2, score2:0, group:"A", venue:"Mexico City Stadium", city:"Mexico City", status:"FINAL",
+    goals1:[{name:"Julián Quiñones",minute:"8"},{name:"Raúl Jiménez",minute:"67"}], goals2:[],
+    redCards:[{team:"South Africa",player:"Sphephelo Sithole",minute:"49"},{team:"South Africa",player:"Themba Zwane",minute:"84"},{team:"Mexico",player:"César Montes",minute:"90+"}]},
+  { date:"2026-06-11", time:"9:00 PM CDT", team1:"South Korea", team2:"Czech Republic", score1:2, score2:1, group:"A", venue:"Guadalajara Stadium", city:"Guadalajara", status:"FINAL",
+    goals1:[{name:"Hwang In-beom",minute:"67"},{name:"Oh Hyeon-gyu",minute:"80"}], goals2:[{name:"Ladislav Krejčí",minute:"59"}], redCards:[]},
+  { date:"2026-06-12", time:"2:00 PM CDT", team1:"Canada", team2:"Bosnia and Herzegovina", score1:null, score2:null, group:"B", venue:"Toronto Stadium", city:"Toronto", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-12", time:"8:00 PM CDT", team1:"United States", team2:"Paraguay", score1:null, score2:null, group:"D", venue:"Los Angeles Stadium", city:"Los Angeles", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-13", time:"2:00 PM CDT", team1:"Qatar", team2:"Switzerland", score1:null, score2:null, group:"B", venue:"San Francisco Bay Area Stadium", city:"San Francisco Bay Area", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-13", time:"5:00 PM CDT", team1:"Brazil", team2:"Morocco", score1:null, score2:null, group:"C", venue:"New York/New Jersey Stadium", city:"East Rutherford, NJ", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-13", time:"8:00 PM CDT", team1:"Haiti", team2:"Scotland", score1:null, score2:null, group:"C", venue:"Boston Stadium", city:"Boston", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-13", time:"8:00 PM CDT", team1:"Australia", team2:"Turkey", score1:null, score2:null, group:"D", venue:"Kansas City Stadium", city:"Kansas City", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-14", time:"12:00 PM CDT", team1:"Germany", team2:"Curaçao", score1:null, score2:null, group:"E", venue:"Houston Stadium", city:"Houston", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-14", time:"3:00 PM CDT", team1:"Netherlands", team2:"Japan", score1:null, score2:null, group:"F", venue:"Dallas Stadium", city:"Dallas", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-14", time:"6:00 PM CDT", team1:"Ivory Coast", team2:"Ecuador", score1:null, score2:null, group:"E", venue:"Philadelphia Stadium", city:"Philadelphia", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-14", time:"9:00 PM CDT", team1:"Sweden", team2:"Tunisia", score1:null, score2:null, group:"F", venue:"Miami Stadium", city:"Miami", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-15", time:"12:00 PM CDT", team1:"Spain", team2:"Cape Verde", score1:null, score2:null, group:"H", venue:"Atlanta Stadium", city:"Atlanta", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-15", time:"5:00 PM CDT", team1:"Belgium", team2:"Egypt", score1:null, score2:null, group:"G", venue:"Seattle Stadium", city:"Seattle", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-15", time:"5:00 PM CDT", team1:"Saudi Arabia", team2:"Uruguay", score1:null, score2:null, group:"H", venue:"Miami Stadium", city:"Miami", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-15", time:"11:00 PM CDT", team1:"IR Iran", team2:"New Zealand", score1:null, score2:null, group:"G", venue:"Los Angeles Stadium", city:"Los Angeles", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-16", time:"2:00 PM CDT", team1:"France", team2:"Senegal", score1:null, score2:null, group:"I", venue:"New York/New Jersey Stadium", city:"East Rutherford, NJ", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-16", time:"5:00 PM CDT", team1:"Iraq", team2:"Norway", score1:null, score2:null, group:"I", venue:"Boston Stadium", city:"Boston", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-16", time:"8:00 PM CDT", team1:"Argentina", team2:"Algeria", score1:null, score2:null, group:"J", venue:"Kansas City Stadium", city:"Kansas City", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-16", time:"11:00 PM CDT", team1:"Austria", team2:"Jordan", score1:null, score2:null, group:"J", venue:"San Francisco Bay Area Stadium", city:"San Francisco Bay Area", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-17", time:"12:00 PM CDT", team1:"Portugal", team2:"DR Congo", score1:null, score2:null, group:"K", venue:"Houston Stadium", city:"Houston", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-17", time:"3:00 PM CDT", team1:"England", team2:"Croatia", score1:null, score2:null, group:"L", venue:"Dallas Stadium", city:"Dallas", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-17", time:"6:00 PM CDT", team1:"Ghana", team2:"Panama", score1:null, score2:null, group:"L", venue:"Toronto Stadium", city:"Toronto", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-17", time:"9:00 PM CDT", team1:"Uzbekistan", team2:"Colombia", score1:null, score2:null, group:"K", venue:"Mexico City Stadium", city:"Mexico City", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-18", time:"TBD", team1:"Mexico", team2:"South Korea", score1:null, score2:null, group:"A", venue:"TBD", city:"TBD", status:"UPCOMING", goals1:[], goals2:[], redCards:[]},
+  { date:"2026-06-18", time:"TBD", team1:"Czech Republic", team2:"South Africa", score1:null, score2:null, group:"A", venue:"TBD", city:"TBD", status:"UPCOMING", goals1:[], goals2:[], redCards:[]}
+];
+
+// ─── Utilities ───
+function fmtDate(s) {
+  try { return new Date(s+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}); }
+  catch(e) { return s; }
+}
+function addDays(s, n) {
+  var d = new Date(s+"T12:00:00");
+  d.setDate(d.getDate()+n);
+  return d.toISOString().split("T")[0];
+}
+function toDateStr(utc) {
+  try { return new Date(utc).toLocaleDateString("en-CA",{timeZone:"America/Chicago"}); }
+  catch(e) { return ""; }
+}
+function toCDT(utc) {
+  try { return new Date(utc).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true,timeZone:"America/Chicago"})+" CDT"; }
+  catch(e) { return "TBD"; }
+}
+
+// ─── ESPN API ───
+function fetchESPN(dateStr) {
+  var d = dateStr.replace(/-/g,"");
+  return fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates="+d+"&limit=20")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      return (data.events||[]).map(function(ev){
+        var comp = ev.competitions && ev.competitions[0];
+        var competitors = comp && comp.competitors || [];
+        var home = competitors.find(function(c){ return c.homeAway==="home"; });
+        var away = competitors.find(function(c){ return c.homeAway==="away"; });
+        var statusType = comp && comp.status && comp.status.type;
+        var done = !!(statusType && (statusType.completed || statusType.name==="STATUS_FINAL"));
+        var live = !done && !!(statusType && (statusType.name==="STATUS_IN_PROGRESS"||statusType.name==="STATUS_HALFTIME"||statusType.name==="STATUS_END_PERIOD"));
+        var hScore = (done||live) ? parseInt((home&&home.score)||"0") : null;
+        var aScore = (done||live) ? parseInt((away&&away.score)||"0") : null;
+        var hName = (home&&home.team&&(home.team.displayName||home.team.name))||"TBD";
+        var aName = (away&&away.team&&(away.team.displayName||away.team.name))||"TBD";
+        return {
+          date: toDateStr(ev.date),
+          time: toCDT(ev.date),
+          team1: hName, team2: aName,
+          score1: hScore, score2: aScore,
+          group: getGroup(hName),
+          venue: (comp&&comp.venue&&comp.venue.fullName)||"",
+          city: (comp&&comp.venue&&comp.venue.address&&comp.venue.address.city)||"",
+          status: done?"FINAL":live?"LIVE":"UPCOMING",
+          statusDetail: (statusType&&statusType.shortDetail)||"",
+          espnId: ev.id,
+          goals1:[], goals2:[], redCards:[]
+        };
+      });
+    });
+}
+
+function fetchStandings() {
+  return fetch("https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var groups = [];
+      var children = data.children || [];
+      for (var i = 0; i < children.length; i++) {
+        var entry = children[i];
+        var groupName = (entry.name||"").replace("Group ","").trim() || "?";
+        var entries = (entry.standings&&entry.standings.entries)||[];
+        var standings = entries.map(function(e2){
+          var team = (e2.team&&(e2.team.displayName||e2.team.name))||"TBD";
+          var stats = {};
+          (e2.stats||[]).forEach(function(s){ stats[s.name]=s.value; });
+          return {
+            name: team,
+            played: stats.gamesPlayed||0,
+            w: stats.wins||0,
+            d: stats.ties||0,
+            l: stats.losses||0,
+            gf: stats.pointsFor||0,
+            ga: stats.pointsAgainst||0,
+            gd: stats.pointDifferential||0,
+            pts: stats.points||0
+          };
+        });
+        standings.sort(function(a,b){ return b.pts-a.pts||b.gd-a.gd||b.gf-a.gf; });
+        groups.push({name:groupName, standings:standings});
+      }
+      return groups;
+    });
+}
+
+function calcStandings(matches) {
+  var stats = {};
+  function init(n){ if(!stats[n]) stats[n]={name:n,played:0,w:0,d:0,l:0,gf:0,ga:0}; }
+  matches.forEach(function(m){
+    if(m.score1==null||m.score2==null) return;
+    init(m.team1); init(m.team2);
+    stats[m.team1].played++; stats[m.team2].played++;
+    stats[m.team1].gf+=m.score1; stats[m.team1].ga+=m.score2;
+    stats[m.team2].gf+=m.score2; stats[m.team2].ga+=m.score1;
+    if(m.score1>m.score2){stats[m.team1].w++;stats[m.team2].l++;}
+    else if(m.score2>m.score1){stats[m.team2].w++;stats[m.team1].l++;}
+    else{stats[m.team1].d++;stats[m.team2].d++;}
+  });
+  return Object.keys(GROUP_MAP).map(function(grp){
+    var teams = GROUP_MAP[grp];
+    var standing = teams.map(function(t){
+      var s = stats[t]||{name:t,played:0,w:0,d:0,l:0,gf:0,ga:0};
+      return Object.assign({},s,{gd:s.gf-s.ga,pts:s.w*3+s.d});
+    });
+    standing.sort(function(a,b){ return b.pts-a.pts||b.gd-a.gd||b.gf-a.gf; });
+    return {name:grp, standings:standing};
+  });
+}
+
+function callClaude(prompt) {
+  return fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})
+  }).then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.type==="error"||!data.content) throw new Error("API error");
+    return (data.content[0]&&data.content[0].text)||"";
+  });
+}
+
+function getAISummary(m) {
+  var g1 = (m.goals1||[]).map(function(g){ return g.name+" ("+g.minute+"')"; }).join(", ");
+  var g2 = (m.goals2||[]).map(function(g){ return g.name+" ("+g.minute+"')"; }).join(", ");
+  var rc = (m.redCards||[]).map(function(r){ return (r.player||r.team)+" ("+r.minute+"')"; }).join(", ");
+  var prompt = "Write a fun, warm 3-4 sentence World Cup recap for a dad sharing with his two 10-year-old daughters who love geography and travel but are new to soccer. Simple language only!\n\nMatch: "+m.team1+" "+m.score1+"–"+m.score2+" "+m.team2+" | Group "+m.group+(m.venue?"\nVenue: "+m.venue+", "+m.city:"")+(g1?"\n"+m.team1+" goals: "+g1:"")+(g2?"\n"+m.team2+" goals: "+g2:"")+(rc?"\nRed cards: "+rc+" (ejected — team plays short-handed)":"")+"\n\nCover: (1) exciting result, (2) standout moments, (3) what these points mean for Group "+m.group+" — 3 pts for win, 1 for draw, need enough to advance.";
+  return callClaude(prompt);
+}
+
+function makeLocalSummary(m) {
+  var h=m.team1, a=m.team2, hs=m.score1, as_=m.score2, grp=m.group;
+  var g1=m.goals1||[], g2=m.goals2||[], rc=m.redCards||[];
+  var s="";
+  if(hs>as_) s="What a result! "+fl(h)+" "+h+" beat "+fl(a)+" "+a+" "+hs+"–"+as_+" and picks up 3 big points in Group "+grp+"! ";
+  else if(as_>hs) s="Big result! "+fl(a)+" "+a+" beat "+fl(h)+" "+h+" "+as_+"–"+hs+" and earns 3 points in Group "+grp+"! ";
+  else s="What a battle! "+fl(h)+" "+h+" and "+fl(a)+" "+a+" drew "+hs+"–"+as_+" in Group "+grp+", each earning 1 point. ";
+  var all = g1.map(function(g){ return {name:g.name,minute:g.minute,t:h}; }).concat(g2.map(function(g){ return {name:g.name,minute:g.minute,t:a}; }));
+  all.sort(function(a,b){ return parseInt(a.minute)-parseInt(b.minute); });
+  if(all.length) s+="Goals: "+all.map(function(g){ return fl(g.t)+" "+g.name+" ("+g.minute+"')"; }).join(", ")+". ";
+  if(rc.length){
+    s+="There "+(rc.length>1?"were":"was")+" also "+rc.length+" red card"+(rc.length>1?"s":"")+" — ";
+    s+=rc.map(function(r){ return r.player+" ("+r.team+")"; }).join(" and ");
+    s+=" got sent off. A red card means a player is ejected and their team plays short-handed! ";
+  }
+  if(hs>as_) s+="In the World Cup, teams earn 3 points for a win, 1 for a draw. "+h+" is off to a great start! 🌟";
+  else if(as_>hs) s+=a+" is off to a great start! 🌟";
+  else s+="Both teams will be hoping for a win next time to advance to the knockout rounds! 🤞";
+  return s;
+}
+
+// ─── Components ───
+
+function MatchCard(props) {
+  var m = props.m;
+  var done = m.status==="FINAL"||(m.score1!=null&&m.score2!=null);
+  var live = m.status==="LIVE";
+  var rc = m.redCards||[];
+  var homeReds = rc.filter(function(r){ return r.team===m.team1; });
+  var awayReds = rc.filter(function(r){ return r.team===m.team2; });
+
+  return e("div",{style:{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:"14px 16px",marginBottom:12}},
+    e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+      e("span",{style:{background:C.goldBg,color:C.gold,borderRadius:5,padding:"3px 8px",fontSize:11,fontWeight:700}}, "GROUP "+m.group),
+      e("span",{style:{color:C.muted,fontSize:12}}, done||live ? (m.statusDetail||"") : m.time),
+      e("span",{style:{background:live?"rgba(255,59,48,.25)":done?"rgba(0,209,88,.18)":"rgba(74,158,232,.18)",color:live?C.red:done?C.green:C.blue,borderRadius:4,padding:"3px 8px",fontSize:11,fontWeight:700}},
+        live?"● LIVE":done?"FINAL":"UPCOMING")
+    ),
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      e("div",{style:{flex:1,textAlign:"center"}},
+        e("div",{style:{fontSize:36}}, fl(m.team1)),
+        e("div",{style:{fontSize:13,fontWeight:700,marginTop:5,color:C.text}}, m.team1),
+        done&&(m.goals1&&m.goals1.length>0)?e("div",{style:{fontSize:10,color:C.muted,marginTop:3,lineHeight:1.6}}, m.goals1.map(function(g){ return "⚽ "+g.name+" "+g.minute+"'"; }).join("\n")):null,
+        done&&homeReds.length>0?e("div",{style:{fontSize:10,color:C.red,marginTop:2}}, "🟥 "+homeReds.map(function(r){ return r.player+" "+r.minute+"'"; }).join(", ")):null
+      ),
+      e("div",{style:{textAlign:"center",minWidth:80}},
+        done||live
+          ? e("div",{style:{fontSize:30,fontWeight:900,color:C.text}}, m.score1, e("span",{style:{color:C.muted,margin:"0 4px"}},"–"), m.score2)
+          : e("div",{style:{fontSize:15,color:C.muted,fontWeight:600}}, m.time)
+      ),
+      e("div",{style:{flex:1,textAlign:"center"}},
+        e("div",{style:{fontSize:36}}, fl(m.team2)),
+        e("div",{style:{fontSize:13,fontWeight:700,marginTop:5,color:C.text}}, m.team2),
+        done&&(m.goals2&&m.goals2.length>0)?e("div",{style:{fontSize:10,color:C.muted,marginTop:3,lineHeight:1.6}}, m.goals2.map(function(g){ return "⚽ "+g.name+" "+g.minute+"'"; }).join("\n")):null,
+        done&&awayReds.length>0?e("div",{style:{fontSize:10,color:C.red,marginTop:2}}, "🟥 "+awayReds.map(function(r){ return r.player+" "+r.minute+"'"; }).join(", ")):null
+      )
+    ),
+    m.venue&&m.venue!=="TBD"?e("div",{style:{marginTop:11,textAlign:"center",color:C.muted,fontSize:12}}, "🏟️ "+m.venue+(m.city?", "+m.city:"")):null
+  );
+}
+
+function SummaryCard(props) {
+  var m = props.m;
+  var stateArr = useState({text:null,loading:false,ai:false});
+  var state = stateArr[0], setState = stateArr[1];
+  var hf = getFact(m.team1), af = getFact(m.team2), rc = m.redCards||[];
+
+  function generate() {
+    setState(function(s){ return Object.assign({},s,{loading:true}); });
+    getAISummary(m)
+      .then(function(t){ setState({text:t,loading:false,ai:true}); })
+      .catch(function(){ setState({text:makeLocalSummary(m),loading:false,ai:false}); });
+  }
+
+  return e("div",{style:{background:C.card,border:"1px solid "+C.border,borderRadius:14,padding:16,marginBottom:16}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:6}},
+      e("span",{style:{fontSize:28}}, fl(m.team1)),
+      e("span",{style:{fontSize:22,fontWeight:900,color:C.text}}, m.score1+" – "+m.score2),
+      e("span",{style:{fontSize:28}}, fl(m.team2))
+    ),
+    e("div",{style:{textAlign:"center",color:C.muted,fontSize:12,marginBottom:10}}, m.team1+" vs "+m.team2+" · Group "+m.group),
+    (m.goals1&&m.goals1.length>0)||(m.goals2&&m.goals2.length>0)||rc.length>0 ? e("div",{style:{background:"rgba(255,255,255,.03)",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:12,lineHeight:1.8,color:"#A8BDD0",textAlign:"center"}},
+      (m.goals1||[]).map(function(g,i){ return e("div",{key:"g1"+i}, fl(m.team1)+" ⚽ "+g.name+" "+g.minute+"'"); }),
+      (m.goals2||[]).map(function(g,i){ return e("div",{key:"g2"+i}, fl(m.team2)+" ⚽ "+g.name+" "+g.minute+"'"); }),
+      rc.map(function(r,i){ return e("div",{key:"rc"+i,style:{color:C.red}}, "🟥 "+(r.player||"Player")+" ("+r.team+") "+r.minute+"'"); })
+    ) : null,
+    !state.text&&!state.loading ? e("button",{onClick:generate,style:{width:"100%",padding:12,borderRadius:10,background:"linear-gradient(135deg,#00A843,"+C.green+")",color:"#fff",fontWeight:700,fontSize:14,border:"none",cursor:"pointer",marginBottom:14}}, "✨ Read Game Summary") : null,
+    state.loading ? e("div",{style:{textAlign:"center",padding:"16px 0",color:C.muted,marginBottom:14}}, e("div",{style:{fontSize:26}}, "⚽"), e("div",{style:{fontSize:13,marginTop:6}}, "Generating recap...")) : null,
+    state.text ? e("div",{style:{marginBottom:16}},
+      e("div",{style:{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"14px 15px",fontSize:14,lineHeight:1.75,color:C.text}}, state.text),
+      state.ai ? e("div",{style:{textAlign:"center",fontSize:10,color:C.muted,marginTop:6}}, "✨ AI-generated summary") : null
+    ) : null,
+    e("div",{style:{borderTop:"1px solid "+C.border,paddingTop:13}},
+      e("div",{style:{fontSize:11,color:C.gold,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}, "🗺️ Fun Facts for Curious Travelers"),
+      [m.team1,m.team2].map(function(name){
+        var d = getFact(name);
+        return e("div",{key:name,style:{border:"1.5px dashed rgba(255,215,0,.25)",borderRadius:10,padding:"10px 12px",marginBottom:8,fontSize:13,lineHeight:1.6,color:"#C4D4E4"}},
+          e("span",{style:{fontSize:18,marginRight:6}}, d.e),
+          e("strong",{style:{color:C.text}}, name+": "),
+          d.f
+        );
+      })
+    )
+  );
+}
+
+function GroupTable(props) {
+  var g = props.g;
+  return e("div",{style:{background:C.card,border:"1px solid "+C.border,borderRadius:14,overflow:"hidden",marginBottom:12}},
+    e("div",{style:{background:C.goldBg,borderBottom:"1px solid "+C.border,padding:"10px 14px",fontWeight:800,fontSize:13,color:C.gold}}, "GROUP "+g.name),
+    e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      e("thead",null,
+        e("tr",null,
+          ["#","Team","P","W","D","L","GD","Pts"].map(function(h,i){
+            return e("th",{key:h,style:{padding:"8px 8px",fontWeight:500,fontSize:11,color:h==="Pts"?C.green:C.muted,textAlign:i<2?"left":"center"}}, h);
+          })
+        )
+      ),
+      e("tbody",null,
+        g.standings.map(function(t,i){
+          var adv = i<2;
+          return e("tr",{key:t.name,style:{background:adv?C.adv:"transparent",borderTop:"1px solid "+C.border}},
+            e("td",{style:{padding:"10px 8px",color:adv?C.green:C.muted,fontWeight:700,textAlign:"left"}}, i+1),
+            e("td",{style:{padding:"10px 8px",textAlign:"left"}},
+              e("span",{style:{marginRight:6}}, fl(t.name)),
+              e("span",{style:{fontWeight:600,color:C.text}}, t.name),
+              adv?e("span",{style:{marginLeft:5,fontSize:10,color:C.green}}, "↑"):null
+            ),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",color:C.muted}}, t.played),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",color:C.muted}}, t.w),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",color:C.muted}}, t.d),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",color:C.muted}}, t.l),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",color:C.muted}}, (t.gd>=0?"+":"")+t.gd),
+            e("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:900,color:C.green}}, t.pts)
+          );
+        })
+      )
+    )
+  );
+}
+
+// ─── Main App ───
+function App() {
+  var today = new Date().toLocaleDateString("en-CA",{timeZone:"America/Chicago"});
+  var tabState = useState("schedule"); var tab = tabState[0], setTab = tabState[1];
+  var dateState = useState(today); var dateStr = dateState[0], setDateStr = dateState[1];
+  var cacheState = useState({}); var matchCache = cacheState[0], setMatchCache = cacheState[1];
+  var matchState = useState(FALLBACK); var allMatches = matchState[0], setAllMatches = matchState[1];
+  var groupsState = useState([]); var liveGroups = groupsState[0], setLiveGroups = groupsState[1];
+  var loadingState = useState(false); var loading = loadingState[0], setLoading = loadingState[1];
+  var updateState = useState(null); var lastUpdate = updateState[0], setLastUpdate = updateState[1];
+  var sourceState = useState("hardcoded"); var dataSource = sourceState[0], setDataSource = sourceState[1];
+  var queryState = useState(""); var searchQuery = queryState[0], setSearchQuery = queryState[1];
+  var answerState = useState(null); var searchAnswer = answerState[0], setSearchAnswer = answerState[1];
+  var searchingState = useState(false); var searching = searchingState[0], setSearching = searchingState[1];
+  var timerRef = useRef(null);
+
+  var loadDay = useCallback(function(date, silent) {
+    if(!silent) setLoading(true);
+    fetchESPN(date)
+      .then(function(espn){
+        if(espn.length>0){
+          setMatchCache(function(prev){ var next=Object.assign({},prev); next[date]=espn; return next; });
+          setDataSource("espn");
+        }
+        setLastUpdate(new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/Chicago"}));
+      })
+      .catch(function(){ setDataSource("hardcoded"); })
+      .finally(function(){ if(!silent) setLoading(false); });
+  }, []);
+
+  useEffect(function(){
+    fetchStandings()
+      .then(function(g){ if(g.length>0) setLiveGroups(g); })
+      .catch(function(){});
+    var t = setInterval(function(){
+      fetchStandings().then(function(g){ if(g.length>0) setLiveGroups(g); }).catch(function(){});
+    }, 60000);
+    return function(){ clearInterval(t); };
+  }, []);
+
+  useEffect(function(){
+    loadDay(dateStr, false);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(function(){ loadDay(dateStr, true); }, 60000);
+    return function(){ clearInterval(timerRef.current); };
+  }, [dateStr, loadDay]);
+
+  useEffect(function(){
+    var cached = Object.keys(matchCache).reduce(function(acc,k){ return acc.concat(matchCache[k]); }, []);
+    if(cached.length===0){ setAllMatches(FALLBACK); return; }
+    var cachedDates = Object.keys(matchCache);
+    var fallbackOther = FALLBACK.filter(function(m){ return cachedDates.indexOf(m.date)===-1; });
+    setAllMatches(fallbackOther.concat(cached));
+  }, [matchCache]);
+
+  function handleSearch(ev) {
+    ev.preventDefault();
+    if(!searchQuery.trim()) return;
+    setSearching(true); setSearchAnswer(null);
+    callClaude("Answer this FIFA World Cup 2026 question accurately and concisely in 2-4 sentences. If it's about very recent match results, mention the user can check the Schedule tab for live data. Question: "+searchQuery)
+      .then(function(t){ setSearchAnswer(t); setSearching(false); })
+      .catch(function(){ setSearchAnswer("Couldn't load an answer right now — try the Google link below."); setSearching(false); });
+  }
+
+  var dayMatches = allMatches.filter(function(m){ return m.date===dateStr; });
+  var completed = dayMatches.filter(function(m){ return m.score1!=null&&m.score2!=null; });
+  var groups = liveGroups.length>0 ? liveGroups : calcStandings(allMatches);
+  var TABS = [{id:"schedule",label:"📅 Schedule"},{id:"standings",label:"🏆 Standings"},{id:"summaries",label:"📰 Summaries"}];
+
+  return e("div",{style:{background:C.bg,minHeight:"100vh",maxWidth:600,margin:"0 auto",color:C.text}},
+
+    // HEADER
+    e("div",{style:{background:"linear-gradient(180deg,#0C1F3D,#08111E)",borderBottom:"3px solid "+C.green,padding:"20px 16px 14px",position:"sticky",top:0,zIndex:10}},
+      e("div",{style:{textAlign:"center",marginBottom:14}},
+        e("div",{style:{fontSize:11,color:C.gold,letterSpacing:3,fontWeight:700,textTransform:"uppercase"}}, "FIFA World Cup 2026"),
+        e("div",{style:{fontSize:26,fontWeight:900,letterSpacing:"-0.5px",marginTop:2}}, "⚽ Match Tracker"),
+        e("div",{style:{fontSize:11,color:C.muted,marginTop:2,letterSpacing:1}}, "USA · CANADA · MEXICO")
+      ),
+      e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:12}},
+        e("button",{onClick:function(){ setDateStr(addDays(dateStr,-1)); },style:{background:"rgba(255,255,255,.07)",border:"1px solid "+C.border,color:C.text,borderRadius:10,width:42,height:42,fontSize:20,cursor:"pointer"}}, "‹"),
+        e("div",{style:{textAlign:"center",minWidth:200}},
+          e("div",{style:{fontSize:15,fontWeight:700}}, fmtDate(dateStr)),
+          e("div",{style:{fontSize:11,color:C.muted,marginTop:2}},
+            loading ? "Fetching live scores..." : dayMatches.length>0 ? dayMatches.length+" match"+(dayMatches.length>1?"es":"")+" · "+completed.length+" final" : "No matches"
+          )
+        ),
+        e("button",{onClick:function(){ setDateStr(addDays(dateStr,1)); },style:{background:"rgba(255,255,255,.07)",border:"1px solid "+C.border,color:C.text,borderRadius:10,width:42,height:42,fontSize:20,cursor:"pointer"}}, "›")
+      ),
+      e("div",{style:{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginTop:10}},
+        e("div",{style:{width:6,height:6,borderRadius:"50%",background:dataSource==="espn"?C.green:C.muted}}),
+        e("span",{style:{fontSize:10,color:dataSource==="espn"?C.green:C.muted}},
+          (dataSource==="espn"?"Live data via ESPN":"Showing known results")+(lastUpdate?" · Updated "+lastUpdate:"")
+        ),
+        e("button",{onClick:function(){ loadDay(dateStr,false); },style:{background:"none",border:"none",color:C.blue,fontSize:10,cursor:"pointer",textDecoration:"underline"}}, "Refresh")
+      )
+    ),
+
+    // TABS
+    e("div",{style:{display:"flex",background:"#0C1A2E",borderBottom:"1px solid "+C.border}},
+      TABS.map(function(t){
+        return e("button",{key:t.id,className:"tab-btn"+(tab===t.id?" active":""),onClick:function(){ setTab(t.id); }}, t.label);
+      })
+    ),
+
+    // CONTENT
+    e("div",{style:{padding:16}},
+
+      // Schedule
+      tab==="schedule" ? (
+        loading&&dayMatches.length===0
+          ? e("div",{style:{textAlign:"center",padding:"60px 20px",color:C.muted}}, e("div",{style:{fontSize:44,marginBottom:10}}, "⚽"), e("div",{style:{fontSize:15}}, "Fetching live scores..."))
+          : dayMatches.length===0
+            ? e("div",{style:{textAlign:"center",padding:"60px 20px",color:C.muted}}, e("div",{style:{fontSize:44,marginBottom:10}}, "📅"), e("div",{style:{fontWeight:700,fontSize:16,marginBottom:6}}, "No matches scheduled"), e("div",{style:{fontSize:13}}, "Tap the arrows to browse match days"))
+            : e("div",null, dayMatches.map(function(m,i){ return e(MatchCard,{key:m.espnId||i,m:m}); }))
+      ) : null,
+
+      // Standings
+      tab==="standings" ? e("div",null,
+        e("div",{style:{background:"rgba(0,209,88,.08)",border:"1px solid rgba(0,209,88,.2)",borderRadius:10,padding:"10px 14px",fontSize:12,color:C.green,textAlign:"center",marginBottom:16}},
+          "↑ Top 2 per group advance automatically · Plus the 8 best 3rd-place teams"
+        ),
+        groups.map(function(g,i){ return e(GroupTable,{key:i,g:g}); })
+      ) : null,
+
+      // Summaries
+      tab==="summaries" ? (
+        completed.length===0
+          ? e("div",{style:{textAlign:"center",padding:"60px 20px",color:C.muted}},
+              e("div",{style:{fontSize:44,marginBottom:10}}, "📰"),
+              e("div",{style:{fontWeight:700,fontSize:16,marginBottom:6}}, dayMatches.length>0?"Games not finished yet":"No matches this day"),
+              e("div",{style:{fontSize:13}}, dayMatches.length>0?"Check back after the games!":"Navigate to June 11 to read the first recaps")
+            )
+          : e("div",null,
+              e("div",{style:{fontSize:12,color:C.muted,textAlign:"center",marginBottom:14}}, "Tap 'Read Game Summary' for a fun recap ✨"),
+              completed.map(function(m,i){ return e(SummaryCard,{key:m.espnId||i,m:m}); })
+            )
+      ) : null,
+
+      // FOOTER
+      e("div",{style:{borderTop:"1px solid "+C.border,paddingTop:16,marginTop:8}},
+
+        // NBA link
+        e("div",{style:{textAlign:"center",marginBottom:16}},
+          e("a",{href:"https://dasoleja.github.io/nba2026",style:{display:"inline-block",background:"rgba(255,107,0,.1)",border:"1px solid rgba(255,107,0,.3)",borderRadius:8,padding:"8px 16px",color:"#FF6B00",fontSize:12,fontWeight:600,textDecoration:"none"}},
+            "🏀 Switch to NBA Finals 2025 Tracker"
+          )
+        ),
+
+        // Search
+        e("div",{style:{fontSize:11,color:C.gold,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:10,textAlign:"center"}}, "🔍 Ask a FIFA Question"),
+        e("form",{onSubmit:handleSearch,style:{display:"flex",gap:8,marginBottom:12}},
+          e("input",{
+            value:searchQuery,
+            onChange:function(ev){ setSearchQuery(ev.target.value); },
+            placeholder:"e.g. When did Brazil last win the World Cup?",
+            style:{flex:1,background:C.card,border:"1px solid "+C.border,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:13,outline:"none"}
+          }),
+          e("button",{type:"submit",style:{background:"linear-gradient(135deg,#00A843,"+C.green+")",border:"none",borderRadius:10,padding:"10px 16px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}, "Ask")
+        ),
+        searching ? e("div",{style:{textAlign:"center",padding:"16px 0",color:C.muted}}, e("div",{style:{fontSize:22,marginBottom:6}}, "🔍"), e("div",{style:{fontSize:13}}, "Looking that up...")) : null,
+        searchAnswer ? e("div",{style:{background:C.card,border:"1px solid "+C.border,borderRadius:10,padding:"14px 15px",fontSize:14,lineHeight:1.75,color:C.text,marginBottom:12}}, searchAnswer) : null,
+        searchQuery ? e("div",{style:{textAlign:"center",marginBottom:14}},
+          e("a",{href:"https://www.google.com/search?q=FIFA+World+Cup+2026+"+encodeURIComponent(searchQuery),target:"_blank",rel:"noreferrer",style:{fontSize:12,color:C.blue,textDecoration:"none"}},
+            "🌐 Search Google for \""+searchQuery+"\""
+          )
+        ) : null,
+        e("div",{style:{textAlign:"center",padding:"12px 0 4px",color:C.muted,fontSize:11}},
+          "Live scores via ESPN · Auto-refreshes every 60s · All times in CDT"
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(React.createElement(App));
+</script>
+</body>
+</html>
